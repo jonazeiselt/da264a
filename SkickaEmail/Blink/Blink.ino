@@ -1,5 +1,3 @@
-#include <Adafruit_ESP8266.h>
-
 /*
   Blink
   Turns on an LED on for one second, then off for one second, repeatedly.
@@ -14,20 +12,22 @@
   modified 8 May 2014
   by Scott Fitzgerald
 
-  http://arduino.esp8266.com/stable/package_esp8266com_index.json
+ https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
  */
 
 
 // the setup function runs once when you press reset or power the board
-void setup() {
+void setup() 
+{
   // initialize digital pin 13 as an output.
-  pinMode(13, OUTPUT);
+  pinMode(2, OUTPUT);
 }
 
 // the loop function runs over and over again forever
-void loop() {
-  digitalWrite(13, HIGH);   // turn the LED on (HIGH is the voltage level)
+void loop() 
+{
+  digitalWrite(2, HIGH);   // turn the LED on (HIGH is the voltage level)
   delay(1000);              // wait for a second
-  digitalWrite(13, LOW);    // turn the LED off by making the voltage LOW
+  digitalWrite(2, LOW);    // turn the LED off by making the voltage LOW
   delay(1000);              // wait for a second
 }
