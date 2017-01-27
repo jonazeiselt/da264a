@@ -7,11 +7,16 @@
   https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
  */
 
-//#include "ESP8266WiFi.h"
-#include <ESP8266WiFi.h>
+#include "ESP8266WiFi.h"
+// #include <ESP8266WiFi.h>
+#include <WiFiClientSecure.h>
 
 // byte mac[] = { 0x00, 0x40, 0x8C, 0xEC, 0x60, 0xA5 };
 char ssid[] = "iot";
+
+// char ssid[] = "AndroidAP";
+// char pass[] = "wury1981";
+
 int port = 465;
 byte mac[6]; // MAC-address
 IPAddress ip(192, 168, 0, 55);
@@ -19,8 +24,6 @@ IPAddress gateway(192, 168, 0, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 char server[] = "smtp.gmail.com";
-
-WiFiClient client;
 
 /*https://www.lifewire.com/what-are-the-gmail-smtp-settings-1170854 */
 /* Modified code from http://www.instructables.com/id/IoT-ESP8266-Series-1-Connect-to-WIFI-Router/ */
@@ -30,7 +33,6 @@ void setup()
   // Connect to WiFi
   WiFi.begin(ssid);
 
-
   WiFi.config(ip, gateway, subnet);
   // while wifi not connected yet, print '.'
   // then after it connected, get out of the loop
@@ -38,8 +40,7 @@ void setup()
     delay(500);
     Serial.print(".");
   }
-
-
+  
   Serial.println("\nWiFi connected");
   Serial.println(WiFi.localIP());  // IP address of ESP8266
 
@@ -84,31 +85,47 @@ void loop()
  */
 void sendEmail()
 {
-  client.connect(server,port);
-  Serial.println("connected");
-  client.println("EHLO www.gmail.com");
+  WiFiClient client; // SSL/TLS support
+  
+  if (!client.connect(server, port))
+  {
+    Serial.println("Connection failed");
+  }
+  smtpResponse(client);
+  Serial.println("Connection successful");
+  
+  client.println("HELO smtp.gmail.com");
+  smtpResponse(client);
   client.println("AUTH LOGIN");
+  smtpResponse(client);
   client.println("Ym9iZ3VhcmQ0NUBnbWFpbC5jb20="); // mail
   client.println("bWFyeWphbmU0NQ==");     //pass
-  client.println("MAIL FROM:<bobguard45@gmail.com>");
+  client.println("MAIL FROM:<bobguard45@gmail.com>"); 
+  smtpResponse(client);
   client.println("RCPT TO:<jonazeiselt@gmail.com>");
-  client.println("DATA");
-  client.println("from:bobguard45@gmail.com");
-  client.println("to:axel0lundberg@gmail.com");
-  client.println("SUBJECT: Warning!");
-  client.println();
-  client.println("Someone is too close to painting x.");
-  client.println(".");
-  client.println(".");
+  smtpResponse(client); 
+  client.println("DATA"); 
+  client.println("from:bobguard45@gmail.com"); 
+  client.println("to:axel0lundberg@gmail.com"); 
+  client.println("SUBJECT: Warning!"); 
+  client.println(); 
+  client.println("Someone is too close to painting x."); 
+  client.println("."); 
+  client.println("."); 
   client.println("QUIT");
-  if (client.available()) {
-    char a = client.read();
-    Serial.print(a);
-  }
+
+  /* if (client.available()) {
+     char a = client.read();
+     Serial.print(a);
+   }*/
 }
 
-void smtpResponse()
+void smtpResponse(WiFiClient client)
 {
+  while(!client.available())
+  {
+    // Just wait..
+  }
   String res = client.readStringUntil('\n');
   Serial.println(res);
 }
