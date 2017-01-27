@@ -7,23 +7,26 @@
   https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
  */
 
-#include "ESP8266WiFi.h"
+//#include "ESP8266WiFi.h"
+#include <ESP8266WiFi.h>
 
 // byte mac[] = { 0x00, 0x40, 0x8C, 0xEC, 0x60, 0xA5 };
-char ssid[] = "ESP_D5D0B4";
+char ssid[] = "iot";
 
 byte mac[6]; // MAC-address
-// IPAddress ip(192, 168, 0, 55);
-
+IPAddress ip(192, 168, 0, 55);
+IPAddress gateway(192,168,0,1);
+IPAddress subnet(255,255,255,0);
 
 /* Modified code from http://www.instructables.com/id/IoT-ESP8266-Series-1-Connect-to-WIFI-Router/ */
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   // Connect to WiFi
-  WiFi.begin(ssid);
+  WiFi.begin(ssid); 
 
-  // WiFi.config(ip);
+
+  WiFi.config(ip, gateway, subnet);
   // while wifi not connected yet, print '.'
   // then after it connected, get out of the loop
   while (WiFi.status() != WL_CONNECTED) {
@@ -71,7 +74,7 @@ void loop()
  * Someone is too close to the painting!
  * QUIT
  */
-public void sendEmail()
+void sendEmail()
 {
 
 }
