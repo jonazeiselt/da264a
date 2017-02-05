@@ -1,17 +1,18 @@
 DAJM
 ======
 
-
 Kopplingar
 ------
+Den här delen kommer ange de kopplingar som gjordes. Pinnen **CS** på MicroSD Card Adapter kopplades till ESP8266:s **SDA** (4).  
+
 | MicroSD Card Adapter | ESP8266    |
 |----------------------|------------|
 | CS                   | SDA (4)    |
-| SCK                  | SCK        |
+| SCK                  | SCK (SCK)  |
 | MOSI                 | MOSI (MO)  |
 | MISO                 | MISO (MI)  |
 | VCC                  | 3.3 V (3V) |
-| GND                  | GND        |
+| GND                  | GND (GND)  |
 
 ESP8266 Setup i Arduino IDE
 ------
