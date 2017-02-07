@@ -11,9 +11,8 @@
   * GND connection of the sensor attached to ground
   * TRIG connection of the sensor attached to digital pin 2
   * ECHO connection of the sensor attached to digital pin 4
-   Original code for Ping))) example was created by David A. Mellis
-   Adapted for HC-SR04 by Tautvidas Sipavicius
-   This example code is in the public domain.
+
+   Created by: Danial Mahmoud and Mardokh Kakadost (2017-02-07)
  */
 
 
@@ -24,6 +23,7 @@ const int redLED = 4;
 void setup() {
   // initialize serial communication:
   Serial.begin(115200);
+  // initialize pins
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(redLED, OUTPUT);
@@ -31,12 +31,11 @@ void setup() {
 
 void loop()
 {
-  // establish variables for duration of the ping, 
-  // and the distance result in inches and centimeters:
-  long duration, inches, cm;
+  // variables for duration of the ping and the distance result in centimeters:
+  long duration, cm;
 
   // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
+  // Give a short LOW pulse a priore to ensure a clean HIGH pulse:
   
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
@@ -58,6 +57,7 @@ void loop()
   Serial.print("cm");
   Serial.println();
 
+  // LED indicate if an object comes within a certain distance
   if(cm <= 20){
     digitalWrite(redLED, HIGH);
   }else{
