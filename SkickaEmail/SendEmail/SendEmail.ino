@@ -43,7 +43,7 @@ char server[] = "smtp.gmail.com";
 unsigned long currentTime;
 WiFiClientSecure client;
 File picture;
-static const char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char cb64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 // char tBuf[64];
 
 /* https://www.lifewire.com/what-are-the-gmail-smtp-settings-1170854
@@ -193,7 +193,7 @@ void encode()
     if (len) 
     {
       encodeblock(in, out, len);
-      for (i = 0; i < 4; i++) client.print(out[i]);
+      for (i = 0; i < 4; i++) client.print((char) out[i]);
       blocksout++;
     }
     
