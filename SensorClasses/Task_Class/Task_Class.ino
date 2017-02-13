@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Scheduler.h>
 
+
 class UltrasensorTask : public Task {
   protected:
     void setup() {
@@ -50,7 +51,7 @@ class UltrasensorTask : public Task {
   private:
     const int trigPin = 12;
     const int echoPin = 14;
-    const int redLED = 4;
+    const int redLED = 0;
 } ultrasensor_task;
 
 class AlarmTask : public Task {
@@ -79,7 +80,6 @@ class DoorSensorTask : public Task {
       Serial.begin(115200);
       pinMode(greenLED, OUTPUT);
       pinMode(INPUT_PIN, INPUT_PULLUP);
-      pinMode(alarmPin, OUTPUT);
     }
 
     void loop()  {
@@ -98,7 +98,6 @@ class DoorSensorTask : public Task {
   private:
     int greenLED = 2;
     int INPUT_PIN = 5;
-    int alarmPin = 16;
 } doorSensor_task;
 
 
@@ -117,3 +116,4 @@ void setup() {
 }
 
 void loop() {}
+
