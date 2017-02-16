@@ -103,6 +103,8 @@ void big_brother()
 /* Alert function that focuses the painting where the alarm was tripped */
 void big_brother_alert()
 {
+    WiFiClient client;
+    const int httpPort = 80;
     String alert = "http://192.168.1.69/axis-cgi/com/ptz.cgi?pan=-25.0&tilt=-14.2&zoom=1000";
     
     if (!client.connect(host, httpPort)) {
@@ -116,22 +118,37 @@ void big_brother_alert()
 
 }
 
-
-/* Function that requests an image that is sent attached to the email when a alarm is tripped */
-void request_image()
-{
-  String image_request = "http://192.168.1.69/axis-cgi/jpg/image.cgi?resolution=320x240";
+/* Function that triggers the event to send email+picture */
+void trigger_alert()
+{ 
+  WiFiClient client;
+  const int httpPort = 80;
   
+  String trigger_on = "http://192.168.1.101/axis-cgi/io/virtualinput.cgi?action=6:/";
+  String trigger_off = "http://192.168.1.101/axis-cgi/io/virtualinput.cgi?action=6:\\";
+
+      if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+
+  client.print(String("GET ") + trigger_on + " HTTP/1.1\r\n"
+               + "Host:" + host + "\r\n"
+               + "Connection: close \r\n\r\n");
+
+    delay(500);
+
     if (!client.connect(host, httpPort)) {
     Serial.println("connection failed");
     return;
   }
-  
-  client.print(String("GET ") + image_request + " HTTP/1.1\r\n"
+
+  client.print(String("GET ") + trigger_off + " HTTP/1.1\r\n"
                + "Host:" + host + "\r\n"
-               + "Connection: close \r\n\r\n");          
-               
+               + "Connection: close \r\n\r\n");
+
 }
+
 
 
 

@@ -13,12 +13,15 @@
   * ECHO connection of the sensor attached to digital pin 4
 
    Created by: Danial Mahmoud and Mardokh Kakadost (2017-02-07)
+   Modified by: Stefan Angelov (2017-02-14)
  */
 
 
 const int trigPin = 12;
 const int echoPin = 14;
 const int redLED = 4;
+
+int adc_filter_values[5] = {1, 1, 1, 1, 1};
 
 void setup() {
   // initialize serial communication:
@@ -32,7 +35,7 @@ void setup() {
 void loop()
 {
   // variables for duration of the ping and the distance result in centimeters:
-  long duration, cm;
+  long duration, duration_temp, cm;
 
   // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
   // Give a short LOW pulse a priore to ensure a clean HIGH pulse:
@@ -43,11 +46,17 @@ void loop()
   delayMicroseconds(10);
   digitalWrite(trigPin, LOW);
 
-  // Read the signal from the sensor: a HIGH pulse whose
-  // duration is the time (in microseconds) from the sending
-  // of the ping to the reception of its echo off of an object.
-  
-  duration = pulseIn(echoPin, HIGH);
+ 
+  /* A moving average filter made to sooth out the HC04 sensor readings*/
+  for(int i = 0; i<5; i++){ // Remove the oldest value
+    adc_filter_values[i] = adc_filter_values[i+1];
+  }
+  adc_filter_values[4] = pulseIn(echoPin, HIGH); // Save the latest ADC value at the back of the array.
+  int adc_filter_values_total = 0;
+  for(int i = 0; i<5; i++) {// Add up all the values
+    adc_filter_values_total += adc_filter_values[i];
+  }
+  duration = adc_filter_values_total / 5;
 
   // convert the time into a distance
   cm = microsecondsToCentimeters(duration);
