@@ -1,16 +1,13 @@
+
 /*
   SendEmail
-
   This program connects to a network and sends an email to a desired recipient
   through Gmail's smtp server.
-
   Author: Axel Lundberg and Jonas Eiselt
-
   Further reading:
   ...
   ...
   ...
-
   Setup:
   https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
   Send image:
@@ -25,11 +22,11 @@
 // byte mac[] = { 0x00, 0x40, 0x8C, 0xEC, 0x60, 0xA5 };
 // char ssid[] = "iot";
 
-char ssid[] = "AndroidAP";
-char pass[] = "wury1981";
+//char ssid[] = "AndroidAP";
+//char pass[] = "wury1981";
 
-//char ssid[] = "Axels iPhone";
-//char pass[] = "Nyttlsen";
+char ssid[] = "Axels iPhone";
+char pass[] = "Nyttlsen";
 
 int port = 465;
 byte mac[6]; // MAC-address
@@ -122,8 +119,8 @@ void sendEmail(String message)
   client.println("to:jonazeiselt@gmail.com");
   client.println("SUBJECT: Warning!");
   smtpResponse(client);
-  client.print("Content-Type: image/jpeg; name=\"picture.jpg\"\r\nContent-Disposition: attachment; filename=\"picture.jpg\"\r\nContent-Transfer-Encoding: base64\r\n\r\n");
-  encode();
+  //client.print("Content-Type: image/jpeg; name=\"picture.jpg\"\r\nContent-Disposition: attachment; filename=\"picture.jpg\"\r\nContent-Transfer-Encoding: base64\r\n\r\n");
+  //encode();
   /*int clientCount = 0;
   if (myFile) 
   {
@@ -144,7 +141,8 @@ void sendEmail(String message)
   client.println("SUBJECT: Warning!");
   smtpResponse(client);
   client.println();
-  client.println(message);*/
+  */
+  client.println(message);
   client.println(".");
   client.println("QUIT");
   // smtpResponse(client);
