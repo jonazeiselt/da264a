@@ -79,92 +79,9 @@ class DoorSensorTask : public Task {
   protected:
 
     void setup() {
-      //Serial.begin(115200);
       pinMode(greenLED, OUTPUT);
       pinMode(INPUT_PIN, INPUT_PULLUP);
-      pinMode(alarmPin, OUTPUT);
-    }
-
-    void loop()  {
-      int inputState = digitalRead(INPUT_PIN);
-      if (inputState == LOW) {
-        //Serial.println("Locked");
-        digitalWrite(greenLED, LOW);
-        delay(250);
-      } else {
-        //Serial.println("Open");
-        digitalWrite(greenLED, HIGH);
-        delay(250);
-      }
-    }
-
-  private:
-    int greenLED = 2;
-    int INPUT_PIN = 5;
-    int alarmPin = 16;
-} doorSensor_task;
-
-class EmailTask : public Task {
-  protected:
-    void setup() {
-      Serial.begin(115200);
-      WiFi.begin("AndroidAP", "wury1981"); // Connect to WiFi
-
-      // WiFi.config(ip, gateway, subnet);
-      // while wifi not connected yet, print '.'
-      // then after it connected, get out of the loop
-      while (WiFi.status() != WL_CONNECTED)
-      {
-        delay(500);
-        Serial.print(".");
-      }
-
-      Serial.println("\nWiFi connected");
-      Serial.println(WiFi.localIP());  // IP address of ESP8266
-    }
-
-    void loop() {
-      sendEmail();
-      while (1);
-    }
-
-    void sendEmail()
-    {
-      if (!client.connect("smtp.gmail.com", port))
-      {
-        Serial.println("Connection failed");
-      }
-      delay(200); //smtpResponse(client);
-      Serial.println("Connection successful");
-
-      client.println("HELO smtp.gmail.com");
-      delay(200); //smtpResponse(client);
-      client.println("AUTH LOGIN");
-      delay(200); //smtpResponse(client);
-      client.println("Ym9iZ3VhcmQ0NUBnbWFpbC5jb20="); // email
-      delay(200); //smtpResponse(client);
-      client.println("bWFyeWphbmU0NQ=="); // password
-      delay(200); //smtpResponse(client);
-
-      client.println("MAIL FROM:<bobguard45@gmail.com>");
-      delay(200); //smtpResponse(client);
-
-      client.println("RCPT TO:<jonazeiselt@gmail.com>");
-      delay(200); //smtpResponse(client);
-
-      client.println("DATA");
-      delay(200); //smtpResponse(client);
-
-      client.println("from:bobguard45@gmail.com");
-      client.println("to:jonazeiselt@gmail.com");
-      client.println("SUBJECT: Warning!");
-      delay(200); //smtpResponse(client);
-      client.println();
-      client.println("Someone is too close to painting!");
-      client.println(".");
-      client.println("QUIT");
-
-      client.stop();
+      delay(10);
     }
 
     void smtpResponse(WiFiClientSecure client)
@@ -183,27 +100,93 @@ class EmailTask : public Task {
       Serial.println(res);
     }
 
+    void loop()  {
+      int inputState = digitalRead(INPUT_PIN);
+      if (inputState == LOW) {
+        //Serial.println("Locked");
+        digitalWrite(greenLED, LOW);
+        delay(250);
+      } else {
+        //Serial.println("Open");
+        digitalWrite(greenLED, HIGH);
+        delay(250);
+        if (flag == false) {
+          if (!client.connect("smtp.gmail.com", port))
+          {
+            Serial.println("Connection failed");
+          }
+          smtpResponse(client);
+          Serial.println("Connection successful");
+
+          client.println("HELO smtp.gmail.com");
+          smtpResponse(client);
+          client.println("AUTH LOGIN");
+          smtpResponse(client);
+          client.println("Ym9iZ3VhcmQ0NUBnbWFpbC5jb20="); // mail
+          smtpResponse(client);
+          client.println("bWFyeWphbmU0NQ==");     //pass
+          smtpResponse(client);
+
+          client.println("MAIL FROM:<bobguard45@gmail.com>");
+          smtpResponse(client);
+
+          client.println("RCPT TO:<jonazeiselt@gmail.com>");
+          smtpResponse(client);
+
+          client.println("DATA");
+          smtpResponse(client);
+
+          client.println("from:bobguard45@gmail.com");
+          client.println("to:jonazeiselt@gmail.com");
+          client.println("SUBJECT: Warning!");
+          smtpResponse(client);
+          client.println();
+          client.println("Someone is too close to painting!");
+          client.println(".");
+          client.println("QUIT");
+          client.stop();
+          flag = true;
+        }
+
+      }
+    }
+
   private:
+    int greenLED = 2;
+    int INPUT_PIN = 5;
     //char ssid[] = "AndroidAP";
     //char pass[] = "wury1981";
     int port = 465;
     //char server[] = "smtp.gmail.com";
     unsigned long currentTime;
     WiFiClientSecure client; // SSL/TLS support
-} email_task;
+    boolean flag = false;
+} doorSensor_task;
 
 
 void setup() {
   Serial.begin(115200);
+  WiFi.begin("Axels iPhone", "Nyttlsen"); // Connect to WiFi
+
+  // WiFi.config(ip, gateway, subnet);
+  // while wifi not connected yet, print '.'
+  // then after it connected, get out of the loop
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi connected");
+  Serial.println(WiFi.localIP());  // IP address of ESP8266
 
   Serial.println("");
 
   delay(1000);
 
-  //Scheduler.start(&doorSensor_task);
-  //Scheduler.start(&alarm_task);
-  //Scheduler.start(&ultrasensor_task);
-  Scheduler.start(&email_task);
+  Scheduler.start(&doorSensor_task);
+  Scheduler.start(&alarm_task);
+  Scheduler.start(&ultrasensor_task);
 
   Scheduler.begin();
 }
