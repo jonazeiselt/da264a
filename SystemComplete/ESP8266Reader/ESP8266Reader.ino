@@ -46,7 +46,7 @@ const char* warningSbj = "Warning!";
 const char* warningMsg = "The system has detected suspicious behaviour. Someone has been standing too close for too long!";
 
 const char* alertSbj = "Alert!";
-const char* alertMsg = "The system has detected a security breach. Someone has stolen a painting!"
+const char* alertMsg = "The system has detected a security breach. Someone has stolen a painting!";
 
 const char* server = "smtp.gmail.com";
 const int port = 465;
@@ -94,7 +94,7 @@ void loop()
   WiFiClient client;
   const int httpPort = 80;
   String url = "http://192.168.0.50/axis-cgi/com/ptz.cgi?rpan=-180";
-  if (!client.connect(host, httpPort))
+  if (!client.connect(cameraServer, httpPort))
   {
     Serial.println("Connection failed");
     return;
@@ -117,7 +117,7 @@ void loop()
     delay(200);    
     digitalWrite(TPIN, LOW);
 
-    if (client.connect(host, httpPort))
+    if (client.connect(cameraServer, httpPort))
     {
       Serial.println("Connected");
 
@@ -126,14 +126,14 @@ void loop()
 
       // This will send the request to the camera
       client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-                   "Host: " + host + "\r\n" +
+                   "Host: " + cameraServer + "\r\n" +
                    "Connection: close\r\n\r\n");
     }
     // Disconnect from WiFi to connect to another one
     WiFi.disconnect();
 
     // Send email
-    sendEmail("Someone has stolen a painting!");
+    sendEmail(alertSbj, alertMsg);
 
     // Disconnect from WiFi to connect to another one
     WiFi.disconnect();
@@ -150,7 +150,7 @@ void loop()
   }
   else
   {
-    if (client.connect(host, httpPort))
+    if (client.connect(cameraServer, httpPort))
     {
       Serial.println("Connected");
 
@@ -159,7 +159,7 @@ void loop()
 
       // This will send the request to the camera
       client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-                   "Host: " + host + "\r\n" +
+                   "Host: " + cameraServer + "\r\n" +
                    "Connection: close\r\n\r\n");
     }
   }
