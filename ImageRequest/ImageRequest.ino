@@ -6,58 +6,71 @@
 */
 
 #include <ESP8266WiFi.h>
-
+#include <WiFiClientSecure.h>
 #include <SPI.h>
 #include <SD.h>
 
-const char* camera = "192.168.1.60"; // ..1.69
-const char* imgReq = "http://192.168.1.60/axis-cgi/jpg/image.cgi?resolution=160x120&camera=1&compression=100&colorlevel=0&clock=1&date=1";
+const char* imgReq = "http://192.168.0.50/axis-cgi/jpg/image.cgi?resolution=160x120&camera=1&compression=100&colorlevel=0&clock=1&date=1";
 
-const char* ssid = "WhyFi";
-const char* pass = "puninabun";
+const char* ssid = "Tele2Gateway6P43";
+const char* pass = "y3wjamMM";
 
-WiFiClient client;
+const char* host = "192.168.0.50";
+
+IPAddress ip(192, 168, 0, 32);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
+
 File image;
 
 char buf[32];
 
+
 void setup()
 {
   Serial.begin(115200);
-  WiFi.begin(ssid, pass);
+  delay(10);
 
-  if (!SD.begin(4))
-  {
-    Serial.println(F("SD card initialization failed.."));
-  }
+  WiFi.begin(ssid, pass); // Connect to WiFi
+  WiFi.config(ip, gateway, subnet);
 
+  // while wifi not connected yet, print '.'
+  // then after it connected, get out of the loop
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
   }
-  Serial.println(F("\nWiFi connected"));
+
+  Serial.println("\nWiFi connected");
+  Serial.println(WiFi.localIP());  // IP address of ESP8266
+  if (!SD.begin(4))
+  {
+    Serial.println(F("SD card initialization failed.."));
+  }
 }
 
 void loop()
 {
-  if (!client.connect(camera, 80))
+  WiFiClient client;
+  const int httpPort = 80;
+  if (!client.connect(host, httpPort))
   {
     Serial.println("Connection failed..");
     return;
   }
 
   Serial.println(F("Sending request.."));
-  if (client.connect(camera, 80))
+  if (client.connect(host, httpPort))
   {
     client.println(String("GET ") + imgReq + " HTTP/1.1");
-    client.println("Host: " + String(camera));
+    client.println("Host: " + String(host));
     client.println("Connection: close");
     client.println();
   }
 
   delay(500);
-  image = SD.open("image.jpg", FILE_WRITE);
+  image = SD.open("imagedata.txt", FILE_WRITE);
 
   int lines = 0;
 
@@ -65,6 +78,7 @@ void loop()
   while (client.available())
   {
     char c = client.read();
+    Serial.print(c);
     if (c == '\n')
     {
       lines++;
@@ -82,39 +96,56 @@ void loop()
     */
     if (lines > 7)
     {
-      Serial.print(c);
-      buf[k] = c;
-      k++;
+      unsigned char val = (unsigned char) c;
+      image.print(val);
+      image.print(" ");
+      // Serial.print(c);
+      // byte byteVal = (byte) c;
+      // buf[k] = c; // byteVal;
+      // k++;
 
-      if (k == 32)
-      {
+      /*if (k == 32)
+        {
         for (int i = 0; i < 32; i++)
         {
-          image.print(buf[i]);
+          // image.print(buf[i]);
+          byte val = (byte) c;
+          image.print(c);
+          image.print(' ');
         }
         k = 0;
         image.println();
-      }
+        /*if (k == 32)
+          {
+          image.write(buf, 32);
+          }*/
       // byte val = (byte) c;
-      // Serial.print(val);
-      // Serial.print(" ");
-      // delay(100);
-
-      // byte val = (byte) c;
-      // image.print(c);
-
-      delay(10);
+      //image.print(c);
+      //image.print(" ");
     }
-    for (int i = 0; i < sizeof(buf); i++)
-    {
-      image.print(buf[i]);
-    }
-    image.println();
+    // byte val = (byte) c;
+    // Serial.print(val);
+    // Serial.print(" ");
+    // delay(100);
+
+    // byte val = (byte) c;
+    // image.print(c);
     image.close();
-  }
+    delay(10);
 
-  while (1)
-  {
-    ESP.wdtFeed();
+    while (1)
+    {
+      ESP.wdtFeed();
+    }
   }
 }
+/*for (int i = 0; i < sizeof(buf); i++)
+  {
+  image.print(buf[i]);
+  image.print(c);
+  image.print(' ');
+  }
+  image.println();*/
+
+// image.write(buf, k);
+
