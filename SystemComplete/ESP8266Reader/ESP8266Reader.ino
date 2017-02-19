@@ -1,6 +1,5 @@
 /*
   ESP8266Reader.ino
-
   This program connects to a network and sends an email to a desired recipient
   through Gmail's smtp server.
 
@@ -75,7 +74,6 @@ void setup()
   WiFi.begin(ssid, pass); // Connect to WiFi
   WiFi.config(ip, gateway, subnet);
 
-  // WiFi.config(ip, gateway, subnet);
   // while wifi not connected yet, print '.'
   // then after it connected, get out of the loop
   while (WiFi.status() != WL_CONNECTED)
@@ -88,7 +86,6 @@ void setup()
   Serial.println(WiFi.localIP());  // IP address of ESP8266
 }
 
-// the loop function runs over and over again forever
 void loop()
 {
   WiFiClient client;
@@ -105,6 +102,7 @@ void loop()
       Send 1 back to Due
       Rotate to painting
       Send Email
+      Send Images to FTP server
      IF 0
       Rotate
   */
@@ -134,7 +132,7 @@ void loop()
 
     // Send email
     sendEmail(alertSbj, alertMsg);
-
+       
     // Disconnect from WiFi to connect to another one
     WiFi.disconnect();
     WiFi.begin(ssid, pass); // Connect to WiFi
@@ -147,6 +145,9 @@ void loop()
       delay(500);
       Serial.print(".");
     }
+    
+    // Send images to FTP-server 
+    trigger_alert();
   }
   else
   {
@@ -236,7 +237,7 @@ void smtpResponse(WiFiClientSecure &client)
   currentTime = millis();
   while (!client.available())
   {
-    // Make sure that the program doesn't lag..
+    // Make sure that the smtp server responds before a new command is sent
     if ((currentTime + 10000) < millis())
     {
       Serial.println("Error: Timeout" + millis());
@@ -245,4 +246,36 @@ void smtpResponse(WiFiClientSecure &client)
   }
   String res = client.readStringUntil('\n');
   Serial.println(res);
+}
+
+/* Function that triggers the event to send pictures to FTP-server */
+void trigger_alert()
+{
+  WiFiClient client;
+  const int httpPort = 80;
+
+  String trigger_on = "http://192.168.0.50/axis-cgi/io/virtualinput.cgi?action=4:/";
+  String trigger_off = "http://192.168.0.50/axis-cgi/io/virtualinput.cgi?action=4:\\";
+
+  if (!client.connect(cameraServer, httpPort)) 
+  {
+    Serial.println("connection failed");
+    return;
+  }
+
+  client.print(String("GET ") + trigger_on + " HTTP/1.1\r\n"
+               + "Host:" + cameraServer + "\r\n"
+               + "Connection: close \r\n\r\n");
+
+  delay(500);
+
+  if (!client.connect(cameraServer, httpPort)) 
+  {
+    Serial.println("connection failed");
+    return;
+  }
+
+  client.print(String("GET ") + trigger_off + " HTTP/1.1\r\n"
+               + "Host:" + cameraServer + "\r\n"
+               + "Connection: close \r\n\r\n");
 }
