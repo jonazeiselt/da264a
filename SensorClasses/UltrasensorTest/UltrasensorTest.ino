@@ -21,6 +21,8 @@ const int trigPin = 12;
 const int echoPin = 14;
 const int redLED = 4;
 
+int breachingDistance = 20;
+
 int adc_filter_values[5] = {1, 1, 1, 1, 1};
 
 void setup() {
@@ -67,7 +69,7 @@ void loop()
   Serial.println();
 
   // LED indicate if an object comes within a certain distance
-  if(cm <= 20){
+  if(cm <= breachingDistance){
     digitalWrite(redLED, HIGH);
   }else{
     digitalWrite(redLED, LOW);

@@ -1,123 +1,60 @@
 
 /*
-  Melody on pin 8 of DUE
-
-http://arduino.cc/en/Tutorial/Tone
-
+  Alarm generator on digital pin 8 of Due
+  Caller control frequency
+  We use use TC1 channel 0
+  Made by: Danial Mahmoud and Naser Kakadost (2017-02-20)
 */
 
 
-// notes in the melody:
-int melody[] = { 262,196, 196, 220, 196, 0,  247, 262
-  /*NOTE_C4, NOTE_G3,NOTE_G3, NOTE_A3, NOTE_G3,0, NOTE_B3, NOTE_C4*/ };
+boolean pinState = false ;
+Tc *timerChannel = TC1;
+int channelNumber = 0;
 
-// note durations: 4 = quarter note, 8 = eighth note, etc.:
-int noteDurations[] = {
-  4, 8, 8, 4,4,4,4,4 };
+int alarmPin = 8;
 
 void setup() {
+  pinMode(alarmPin, OUTPUT);
 }
 
 void loop() {
-  // iterate over the notes of the melody:
-
-  for (int thisNote = 0; thisNote < 8; thisNote++) {
-
-    // to calculate the note duration, take one second 
-    // divided by the note type.
-    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-    int noteDuration = 1000/noteDurations[thisNote];
-    tone(8, melody[thisNote],noteDuration);
-
-    // to distinguish the notes, set a minimum time between them.
-    // the note's duration + 30% seems to work well:
-    int pauseBetweenNotes = noteDuration * 1.30;
-    delay(pauseBetweenNotes);
-    // stop the tone playing:
-    noTone(8);
-  }
-  delay(3000);
-
+  // Keep tone at frequency 300 Hz
+  tone(300);
+  delay(1000);
+  // Stop playing tone 
+  noTone(alarmPin);
+  delay(1000);
 }
 
+static void enableTimer() {
+  //Enable or disable write protect of PMC registers.
+  pmc_set_writeprotect(false);
+  //Enable the specified peripheral clock.
+  pmc_enable_periph_clk(TC3_IRQn);
+  // Configure timer
+  TC_Configure(timerChannel, channelNumber, TC_CMR_TCCLKS_TIMER_CLOCK4 | TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC ); // Waveform, Counter running up and reset when equals to RC, (TC_configure just sets bits in the TC_CMR register that belongs to TC3 (= Timer 1 channel 0 )
+  timerChannel->TC_CHANNEL[channelNumber].TC_IER = TC_IER_CPCS; // RC compare interrupt
+  timerChannel->TC_CHANNEL[channelNumber].TC_IDR = ~TC_IER_CPCS;
+  NVIC_EnableIRQ(TC3_IRQn); // enable the TC3_IRQn interrupt, so handler can be called
+}
 
-/*
-Tone generator
-v1  use timer, and toggle any digital pin in ISR
-   funky duration from arduino version
-   TODO use FindMckDivisor?
-   timer selected will preclude using associated pins for PWM etc.
-    could also do timer/pwm hardware toggle where caller controls duration
-*/
-
-
-// timers TC0 TC1 TC2   channels 0-2 ids 0-2  3-5  6-8     AB 0 1
-// use TC1 channel 0 
-#define TONE_TIMER TC1
-#define TONE_CHNL 0
-#define TONE_IRQ TC3_IRQn
-
-// TIMER_CLOCK4   84MHz/128 with 16 bit counter give 10 Hz to 656KHz
-//  piano 27Hz to 4KHz
-
-static uint8_t pinEnabled[PINS_COUNT];
-static uint8_t TCChanEnabled = 0;
-static boolean pin_state = false ;
-static Tc *chTC = TONE_TIMER;
-static uint32_t chNo = TONE_CHNL;
-
-volatile static int32_t toggle_count;
-static uint32_t tone_pin;
-
-// frequency (in hertz) and duration (in milliseconds).
-
-void tone(uint32_t ulPin, uint32_t frequency, int32_t duration)
+void tone(uint32_t frequency)
 {
-    const uint32_t rc = VARIANT_MCK / 256 / frequency; 
-    tone_pin = ulPin;
-    toggle_count = 0;  // strange  wipe out previous duration
-    if (duration > 0 ) toggle_count = 2 * frequency * duration / 1000;
-     else toggle_count = -1;
-
-    if (!TCChanEnabled) {
-      pmc_set_writeprotect(false);
-      pmc_enable_periph_clk((uint32_t)TONE_IRQ);
-      TC_Configure(chTC, chNo,
-        TC_CMR_TCCLKS_TIMER_CLOCK4 |
-        TC_CMR_WAVE |         // Waveform mode
-        TC_CMR_WAVSEL_UP_RC ); // Counter running up and reset when equals to RC
-  
-      chTC->TC_CHANNEL[chNo].TC_IER=TC_IER_CPCS;  // RC compare interrupt
-      chTC->TC_CHANNEL[chNo].TC_IDR=~TC_IER_CPCS;
-       NVIC_EnableIRQ(TONE_IRQ);
-                         TCChanEnabled = 1;
-    }
-    if (!pinEnabled[ulPin]) {
-      pinMode(ulPin, OUTPUT);
-      pinEnabled[ulPin] = 1;
-    }
-    TC_Stop(chTC, chNo);
-                TC_SetRC(chTC, chNo, rc);    // set frequency
-    TC_Start(chTC, chNo);
+  const uint32_t rc = VARIANT_MCK / 256 / frequency; // VARIANT_MCK the frequency of arduino DUE(84MHz), rc is the value the timer counts towards
+  enableTimer();
+  TC_SetRC(timerChannel, channelNumber, rc);    // set frequency, this is where we actually set the rate that we want the timer to interrupt at
+  TC_Start(timerChannel, channelNumber);  // start TC 1, channel 0
 }
 
-void noTone(uint32_t ulPin)
+void noTone(int pin)
 {
-  TC_Stop(chTC, chNo);  // stop timer
-  digitalWrite(ulPin,LOW);  // no signal on pin
+  TC_Stop(timerChannel, channelNumber);  // stop timer
+  digitalWrite(pin, LOW); // no signal on pin
 }
 
-// timer ISR  TC1 ch 0
-void TC3_Handler ( void ) {
+// Interrupt Service Routine for the timer (TC1 ch 0), in this ISR we toggle digital pin
+void TC3_Handler () {
   TC_GetStatus(TC1, 0);
-  if (toggle_count != 0){
-    // toggle pin  TODO  better
-    digitalWrite(tone_pin,pin_state= !pin_state);
-    if (toggle_count > 0) toggle_count--;
-  } else {
-    noTone(tone_pin);
-  }
+  digitalWrite(alarmPin, pinState = !pinState);
 }
-
-
 
