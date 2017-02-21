@@ -11,6 +11,8 @@ int redLED = 2;
 int INPUT_PIN = 9;
 int greenLED = 3;
 
+int adc_filter_values[5] = {1, 1, 1, 1, 1};
+
 boolean pinState = false ;
 Tc *timerChannel = TC1;
 int channelNumber = 0;
@@ -102,8 +104,18 @@ void loop2() {
   // Read the signal from the sensor: a HIGH pulse whose
   // duration is the time (in microseconds) from the sending
   // of the ping to the reception of its echo off of an object.
-
-  duration = pulseIn(echoPin, HIGH);
+ 
+ 
+  /* A moving average filter made to sooth out the HC04 sensor readings*/
+  for(int i = 0; i<5; i++){ // Remove the oldest value
+    adc_filter_values[i] = adc_filter_values[i+1];
+  }
+  adc_filter_values[4] = pulseIn(echoPin, HIGH); // Save the latest ADC value at the back of the array.
+  int adc_filter_values_total = 0;
+  for(int i = 0; i<5; i++) {// Add up all the values
+    adc_filter_values_total += adc_filter_values[i];
+  }
+  duration = adc_filter_values_total / 5;
 
   // convert the time into a distance
   cm = duration / 29 / 2;
