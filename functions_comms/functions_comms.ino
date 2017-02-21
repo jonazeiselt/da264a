@@ -208,3 +208,18 @@ void sendImage()
   client.println("Connection: close");
   client.println();
 }
+
+void continuousRotate()
+{
+    String casRotate = "http://192.168.1.69/axis-cgi/com/ptz.cgi?continuouspantiltmove=20,20";
+   
+    if (!client.connect(host, 80))
+  {
+    Serial.println("Connection failed..");
+  }
+  
+  client.println(String("GET ") + casRotate + " HTTP/1.1");
+  client.println("Host: " + String(host));
+  client.println("Connection: close");
+  client.println();
+}
