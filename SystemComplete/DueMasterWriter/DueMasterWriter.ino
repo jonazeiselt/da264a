@@ -7,9 +7,13 @@
 int trigPin = 12;
 int echoPin = 13;
 int redLED = 2;
+int breachingDistance = 20;
+int serialPin = 23;
+int checkPin = 22;
 
 int INPUT_PIN = 9;
 int greenLED = 3;
+boolean flag = false;
 
 boolean pinState = false ;
 Tc *timerChannel = TC1;
@@ -18,13 +22,16 @@ int channelNumber = 0;
 int alarmPin = 8;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
+  //Initiate pins related to ultrasonic sensor's activity
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(redLED, OUTPUT);
+  pinMode(checkPin, INPUT);
+  pinMode(serialPin, OUTPUT);
 
-  // Setup the magnetsensors pins
+  // Setup the door sensors pins
   pinMode(greenLED, OUTPUT);
   pinMode(INPUT_PIN, INPUT_PULLUP);
 
@@ -39,6 +46,7 @@ void setup() {
   Scheduler.startLoop(loop2);
   Scheduler.startLoop(loop3);
   Scheduler.startLoop(loop4);
+  Scheduler.startLoop(loop5);
 }
 
 static void enableTimer() {
@@ -47,7 +55,7 @@ static void enableTimer() {
   //Enable the specified peripheral clock.
   pmc_enable_periph_clk(TC3_IRQn);
   // Configure timer: TC_configure just sets bits in the TC_CMR register that belongs to TC3 (= Timer 1 channel 0 )
-  TC_Configure(timerChannel, channelNumber, TC_CMR_TCCLKS_TIMER_CLOCK4 | TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC ); // Waveform, Counter running up and reset when equals to RC,                                                                     
+  TC_Configure(timerChannel, channelNumber, TC_CMR_TCCLKS_TIMER_CLOCK4 | TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC ); // Waveform, Counter running up and reset when equals to RC,
   timerChannel->TC_CHANNEL[channelNumber].TC_IER = TC_IER_CPCS; // RC compare interrupt
   timerChannel->TC_CHANNEL[channelNumber].TC_IDR = ~TC_IER_CPCS;
   NVIC_EnableIRQ(TC3_IRQn); // enable the TC3_IRQn interrupt, so handler can be called
@@ -82,7 +90,6 @@ void loop() {
     Serial.println("Open");
     digitalWrite(greenLED, HIGH);
   }
-
   yield();
 }
 
@@ -114,10 +121,12 @@ void loop2() {
   Serial.println();
 
   // LED indicate if an object comes within a certain distance
-  if (cm <= 20) {
+  if (cm <= breachingDistance) {
     digitalWrite(redLED, HIGH);
+    digitalWrite(checkPin, HIGH);
   } else {
     digitalWrite(redLED, LOW);
+    digitalWrite(checkPin, LOW);
   }
   delay(300);
 
@@ -141,12 +150,29 @@ void loop3() {
    alerts it about the event when the magnet contact switch breaks.
 */
 void loop4() {
-  if (digitalRead(INPUT_PIN) == HIGH) {
-    if (digitalRead(4) == HIGH) {
-      digitalWrite(5, LOW);
-    } else {
+  if(digitalRead(INPUT_PIN) == HIGH) {
+    while(digitalRead(4) == LOW) {
       digitalWrite(5, HIGH);
+      yield();
+    } 
+    digitalWrite(5, LOW);
+  }
+  yield();
+}
+
+void loop5() {
+  long currentMillis = millis();
+  //ultrasonic sensor detects that someone is too close to painting
+  while (digitalRead(redLED) == HIGH) {
+    //if 10 seconds has passed, signal to ESP that someone has stood at the painting to long
+    if (millis() >= (currentMillis + 10000)) {
+      while (digitalRead(checkPin) == LOW) {
+        digitalWrite(serialPin, HIGH);
+        yield();
+      }
+      digitalWrite(serialPin, LOW);
     }
+    yield();
   }
   yield();
 }
