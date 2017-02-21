@@ -1,14 +1,11 @@
 /*
   ESP8266Reader.ino
   This program connects to a network and sends an email to a desired recipient
-  through Gmail's smtp server.
+  through Gmail's smtp server. A simple communication between Arduino Due and
+  ESP8266 is handled.
 
-  Author: Axel Lundberg and Jonas Eiselt
-
-  Setup:
-  https://learn.sparkfun.com/tutorials/esp8266-thing-hookup-guide/installing-the-esp8266-arduino-addon
-  Send image:
-  https://forum.arduino.cc/index.php?PHPSESSID=56s0bhku4016v4dlv30dh1m8k5&topic=67701.30
+  @author Axel Lundberg and Jonas Eiselt
+  @date 2017-02-21
 */
 
 #include <ESP8266WiFi.h>
@@ -27,14 +24,14 @@ const char* mSsid = "AndroidAP";
 const char* mPass = "wury1981";
 
 /* Camera config: change if needed */
-const char* cameraServer = "192.168.0.50";
+const char* cameraServer = "192.168.1.50";
 
-IPAddress ip(192, 168, 0, 32);
-IPAddress gateway(192, 168, 0, 1);
+IPAddress ip(192, 168, 1, 32);
+IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 /* Email config: change variables if neeeded */
-const char* emailRecipient = "jonazeiselt@gmail.com"; 
+const char* emailRecipient = "jonazeiselt@gmail.com";
 const char* emailSender = "bobguard45@gmail.com";
 
 /* Authentication config: change variables if needed */
@@ -52,30 +49,33 @@ const int port = 465;
 
 unsigned long currentTime;
 
-int RPIN = 2; // Receive on pin 5 (1/0)
-int TPIN = 4; // Transmit on pin 4 (1/0)
+/* Receive and transmit pins from and to Arduino Due */
+int RMPIN = 2; // Receive on pin 2 (1/0)
+int TMPIN = 4; // Transmit on pin 4 (1/0)
+int RUPIN = 13;
+int TUPIN = 16;
 
-boolean flag = false;
-
-/* https://www.lifewire.com/what-are-the-gmail-smtp-settings-1170854
-  Modified code from http://www.instructables.com/id/IoT-ESP8266-Series-1-Connect-to-WIFI-Router/ */
+int doorSensorValue = 0;
+int ultraSensorValue = 0;
 
 /*
    Connects to network and calls the method sendEmail
 */
 void setup()
 {
-  pinMode(RPIN, INPUT);
-  pinMode(TPIN, OUTPUT);
+  pinMode(RMPIN, INPUT);
+  pinMode(TMPIN, OUTPUT);
+  pinMode(RUPIN, INPUT);
+  pinMode(TUPIN, OUTPUT);
 
   Serial.begin(115200);
   delay(10);
 
-  WiFi.begin(ssid, pass); // Connect to WiFi
+  WiFi.begin(ssid, pass); // Connect to WiFi (camera)
   WiFi.config(ip, gateway, subnet);
 
-  // while wifi not connected yet, print '.'
-  // then after it connected, get out of the loop
+  /* while wifi not connected yet, print '.'
+    then after it connected, get out of the loop */
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
@@ -90,49 +90,94 @@ void loop()
 {
   WiFiClient client;
   const int httpPort = 80;
-  String url = "http://192.168.0.50/axis-cgi/com/ptz.cgi?rpan=-180";
+  String rotate = "http://192.168.1.50/axis-cgi/com/ptz.cgi?rpan=-180&speed=30";
+  String paintingPoint = "http://192.168.1.50/axis-cgi/com/ptz.cgi?pan=137.2&tilt=-0.5&speed=60";
+
+  String subject;
+  String message;
+
   if (!client.connect(cameraServer, httpPort))
   {
-    Serial.println("Connection failed");
+    Serial.println("Connection to camera failed");
     return;
   }
 
-  /* Read from Due
-     IF 1
+  /*
+     M = value from door sensor
+     U = value from ultrasonic sensor
+
+     Read from Due
+     IF M=1
       Send 1 back to Due
       Rotate to painting
-      Send Email
       Send Images to FTP server
-     IF 0
+      Send Email
+     IF U=1
+      Send 1 back to Due
+      Rotate to painting
+      Send Images to FTP server
+      Send email
+     ELSE
       Rotate
   */
-  int readValue = digitalRead(RPIN);
-  Serial.print("readValue = ");
-  Serial.println(readValue);
-  if (readValue == 1)
-  {
-    digitalWrite(TPIN, HIGH);
-    delay(200);    
-    digitalWrite(TPIN, LOW);
+  doorSensorValue = digitalRead(RMPIN);
+  ultraSensorValue = digitalRead(RUPIN);
 
+  Serial.print("\ndoor sensor = ");
+  Serial.println(doorSensorValue);
+  Serial.print("ultrasonic sensor = ");
+  Serial.println(ultraSensorValue);
+  
+  if ((doorSensorValue == 1 || ultraSensorValue == 1))
+  {
+    if (doorSensorValue == 1)
+    {
+      digitalWrite(TMPIN, HIGH);
+      delay(200);
+      digitalWrite(TMPIN, LOW);
+
+      subject = alertSbj;
+      message = alertMsg;
+    }
+    else if(ultraSensorValue == 1)
+    {
+      digitalWrite(TUPIN, HIGH);
+      delay(200);
+      digitalWrite(TUPIN, LOW);
+
+      subject = warningSbj;
+      message = warningMsg;
+    }
+
+    if (!client.connect(cameraServer, httpPort))
+    {
+      Serial.println("Connection failed");
+      return;
+    }
+    
     if (client.connect(cameraServer, httpPort))
     {
       Serial.println("Connected");
 
       Serial.print("Requesting URL: ");
-      Serial.println(url);
+      Serial.println(paintingPoint);
 
-      // This will send the request to the camera
-      client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+      // This will rotate the camera
+      client.print(String("GET ") + paintingPoint + " HTTP/1.1\r\n" +
                    "Host: " + cameraServer + "\r\n" +
                    "Connection: close\r\n\r\n");
+
+      delay(500);
     }
+    // Send images to FTP-server
+    trigger_alert();
+
     // Disconnect from WiFi to connect to another one
     WiFi.disconnect();
 
     // Send email
-    sendEmail(alertSbj, alertMsg);
-       
+    sendEmail(subject, message);
+
     // Disconnect from WiFi to connect to another one
     WiFi.disconnect();
     WiFi.begin(ssid, pass); // Connect to WiFi
@@ -145,9 +190,6 @@ void loop()
       delay(500);
       Serial.print(".");
     }
-    
-    // Send images to FTP-server 
-    trigger_alert();
   }
   else
   {
@@ -156,14 +198,17 @@ void loop()
       Serial.println("Connected");
 
       Serial.print("Requesting URL: ");
-      Serial.println(url);
+      Serial.println(rotate);
 
       // This will send the request to the camera
-      client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+      client.print(String("GET ") + rotate + " HTTP/1.1\r\n" +
                    "Host: " + cameraServer + "\r\n" +
                    "Connection: close\r\n\r\n");
     }
   }
+  doorSensorValue = 0;
+  ultraSensorValue = 0;
+  
   delay(2500);
   ESP.wdtFeed();
 }
@@ -194,7 +239,7 @@ void sendEmail(String subject, String message)
 
   Serial.println("\nWiFi connected");
   Serial.println(WiFi.localIP());  // IP address of ESP8266
-  
+
   if (!client.connect(server, port))
   {
     Serial.println("Connection failed");
@@ -206,9 +251,9 @@ void sendEmail(String subject, String message)
   smtpResponse(client);
   client.println("AUTH LOGIN");
   smtpResponse(client);
-  client.println(base64Login); // mail
+  client.println(base64Login); // eMail (Base64 encoded)
   smtpResponse(client);
-  client.println(base64Pass);     //pass
+  client.println(base64Pass); // password (Base64 encoded)
   smtpResponse(client);
 
   client.println("MAIL FROM:<bobguard45@gmail.com>");
@@ -223,7 +268,6 @@ void sendEmail(String subject, String message)
   client.println("from:" + String(emailSender));
   client.println("to:" + String(emailRecipient));
   client.println("SUBJECT: " + subject);
-  smtpResponse(client);
   client.println(message);
   client.println(".");
   client.println("QUIT");
@@ -238,7 +282,7 @@ void smtpResponse(WiFiClientSecure &client)
   while (!client.available())
   {
     // Make sure that the smtp server responds before a new command is sent
-    if ((currentTime + 10000) < millis())
+    if (millis() > (currentTime + 10000))
     {
       Serial.println("Error: Timeout" + millis());
       return;
@@ -254,10 +298,10 @@ void trigger_alert()
   WiFiClient client;
   const int httpPort = 80;
 
-  String trigger_on = "http://192.168.0.50/axis-cgi/io/virtualinput.cgi?action=4:/";
-  String trigger_off = "http://192.168.0.50/axis-cgi/io/virtualinput.cgi?action=4:\\";
+  String trigger_on = "http://192.168.1.50/axis-cgi/io/virtualinput.cgi?action=4:/";
+  String trigger_off = "http://192.168.1.50/axis-cgi/io/virtualinput.cgi?action=4:\\";
 
-  if (!client.connect(cameraServer, httpPort)) 
+  if (!client.connect(cameraServer, httpPort))
   {
     Serial.println("connection failed");
     return;
@@ -267,9 +311,9 @@ void trigger_alert()
                + "Host:" + cameraServer + "\r\n"
                + "Connection: close \r\n\r\n");
 
-  delay(500);
+  delay(100);
 
-  if (!client.connect(cameraServer, httpPort)) 
+  if (!client.connect(cameraServer, httpPort))
   {
     Serial.println("connection failed");
     return;
