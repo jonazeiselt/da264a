@@ -1,47 +1,21 @@
 /* HC-SR04 Sensor
 
-   This sketch reads a HC-SR04 ultrasonic rangefinder and returns the
-   distance to the closest object in range. To do this, it sends a pulse
-   to the sensor to initiate a reading, then listens for a pulse
-   to return.  The length of the returning pulse is proportional to
-   the distance of the object from the sensor.
-
-   The circuit:
-    VCC connection of the sensor attached to +5V
-    GND connection of the sensor attached to ground
-    TRIG connection of the sensor attached to digital pin 2
-    ECHO connection of the sensor attached to digital pin 4
+   The sketch initates the ultrasonic sensors trigg pulse which releases a burst
+   of ultrasounds. Echo-pin is raised to detect any incoming signal. Distance to
+   closest object within discernible range is written in Serial Monitor.
 
    Created by: Danial Mahmoud and Mardokh Kakadost (2017-02-07)
    Modified by: Stefan Angelov (2017-02-14)
 */
-/*
-int outPin = 10;
-int inPin = 11;
 
-void setup()
-{
-  Serial.begin(115200);
-  pinMode(outPin, OUTPUT);
-  pinMode(inPin, INPUT);
-}
+int trigPin = 12;
+int echoPin = 13;
+int redLED = 2;
 
-void loop()
-{
-  digitalWrite(outPin, HIGH);
-  delayMicroseconds(15);     
-  digitalWrite(outPin, LOW);
-  int distance = pulseIn(inPin, HIGH);
-  distance  = distance/58;
-  Serial.println(distance);
-  delay(50);     
-}
-*/
+// Variables for detected objects
+long duration, cm;
 
-const int trigPin = 12;
-const int echoPin = 13;
-const int redLED = 2;
-
+// Minimum allowed distance to painting
 int breachingDistance = 20;
 
 //int adc_filter_values[5] = {1, 1, 1, 1, 1};
@@ -57,12 +31,7 @@ void setup() {
 
 void loop()
 {
-  // variables for duration of the ping and the distance result in centimeters:
-  long duration, duration_temp, cm;
-
-  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse a priore to ensure a clean HIGH pulse:
-
+  // Trigger sensor by giving a LOW pulse for 2 microsec and then a HIGH pulse for 10 microsec:
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -75,6 +44,8 @@ void loop()
   //    adc_filter_values[i] = adc_filter_values[i+1];
   //  }
   //  adc_filter_values[4] = pulseIn(echoPin, HIGH); // Save the latest ADC value at the back of the array.
+
+  // raise echo to detect incoming signals
   duration = pulseIn(echoPin, HIGH);
 
   //  int adc_filter_values_total = 0;
@@ -83,29 +54,21 @@ void loop()
   //  }
   //  duration = adc_filter_values_total / 5;
 
-  // convert the time into a distance
-  cm = microsecondsToCentimeters(duration);
+  // convert the time into distance in cm
+  cm = duration / 58;
 
   Serial.print("Distance to object: ");
   Serial.print(cm);
   Serial.print("cm");
   Serial.println();
 
-//  // LED indicate if an object comes within a certain distance
-//  if (cm <= 20) {
-//    digitalWrite(redLED, HIGH);
-//  } else {
-//    digitalWrite(redLED, LOW);
-//  }
-  
+  // LED indicates if an object comes within a certain distance
+  if (cm <= 20) {
+    digitalWrite(redLED, HIGH);
+  } else {
+    digitalWrite(redLED, LOW);
+  }
 
   delay(10);
 }
 
-long microsecondsToCentimeters(long microseconds)
-{
-  // The speed of sound is 340 m/s or 29 microseconds per centimeter.
-  // The ping travels out and back, so to find the distance of the
-  // object we take half of the distance travelled.
-  return microseconds / 29 / 2;
-}
