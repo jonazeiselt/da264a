@@ -97,6 +97,10 @@ void setup()
   continuousRotate();
 }
 
+/*
+   This function reads value from Arduino Due and decideds whether an email
+   has to be sent.
+*/
 void loop()
 {
   WiFiClient client;
@@ -110,24 +114,6 @@ void loop()
     return;
   }
 
-  /*
-     M = value from door sensor
-     U = value from ultrasonic sensor
-
-     Read from Due
-     IF M=1
-      Send 1 back to Due
-      Rotate to painting
-      Send Images to FTP server
-      Send Email
-     IF U=1
-      Send 1 back to Due
-      Rotate to painting
-      Send Images to FTP server
-      Send email
-     ELSE
-      Rotate
-  */
   doorSensorValue = digitalRead(RMPIN);
   ultraSensorValue = digitalRead(RUPIN);
 
@@ -195,8 +181,8 @@ void loop()
     WiFi.begin(ssid, pass); // Connect to WiFi
     WiFi.config(ip, gateway, subnet);
 
-     /* while wifi not connected yet, print '.'
-    then after it connected, get out of the loop */
+    /* while wifi not connected yet, print '.'
+      then after it connected, get out of the loop */
     while (WiFi.status() != WL_CONNECTED)
     {
       delay(500);
@@ -210,7 +196,7 @@ void loop()
   ultraSensorValue = 0;
 
   delay(1000);
-  ESP.wdtFeed();
+  ESP.wdtFeed(); // Prevents crash..
 }
 
 /* SMTP (Used for sending email)
@@ -276,6 +262,10 @@ void sendEmail(String subject, String message)
   client.stop();
 }
 
+/*
+  This function awaits response from the smtp server. It is important a response
+  is received before a new command is sent from the client.
+*/
 void smtpResponse(WiFiClientSecure &client)
 {
   currentTime = millis();
@@ -292,6 +282,9 @@ void smtpResponse(WiFiClientSecure &client)
   Serial.println(res);
 }
 
+/*
+   This function makes the Axis camera to rotate to a specific point.
+*/
 void rotatePoint(String pan, String tilt)
 {
   WiFiClient client;
@@ -311,6 +304,9 @@ void rotatePoint(String pan, String tilt)
   client.println();
 }
 
+/*
+   This function makes the Axis camera rotate continuously.
+*/
 void continuousRotate()
 {
   WiFiClient client;
