@@ -68,7 +68,8 @@ String pan = "137.2";
 String tilt = "-0.5";
 
 /*
-   Connects to network and calls the method sendEmail
+   Connects to network that the camera is connected to and calls a method
+   that makes the camera rotate continuously.
 */
 void setup()
 {
