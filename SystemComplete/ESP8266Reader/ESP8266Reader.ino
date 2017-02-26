@@ -25,6 +25,7 @@ const char* mPass = "wury1981";
 
 /* Camera config: change if needed */
 const char* cameraServer = "192.168.1.50";
+const int httpPort = 80;
 
 IPAddress ip(192, 168, 1, 32);
 IPAddress gateway(192, 168, 1, 1);
@@ -47,6 +48,8 @@ const char* alertMsg = "The system has detected a security breach. Someone has s
 const char* server = "smtp.gmail.com";
 const int port = 465;
 
+int doagain = 0;
+
 unsigned long currentTime;
 
 /* Receive and transmit pins from and to Arduino Due */
@@ -57,6 +60,12 @@ int TUPIN = 16;
 
 int doorSensorValue = 0;
 int ultraSensorValue = 0;
+
+int times = 0;
+
+/* Camera rotate config: change if needed */
+String pan = "137.2";
+String tilt = "-0.5";
 
 /*
    Connects to network and calls the method sendEmail
@@ -84,14 +93,13 @@ void setup()
 
   Serial.println("\nWiFi connected");
   Serial.println(WiFi.localIP());  // IP address of ESP8266
+
+  continuousRotate();
 }
 
 void loop()
 {
   WiFiClient client;
-  const int httpPort = 80;
-  String rotate = "http://192.168.1.50/axis-cgi/com/ptz.cgi?rpan=-180&speed=30";
-  String paintingPoint = "http://192.168.1.50/axis-cgi/com/ptz.cgi?pan=137.2&tilt=-0.5&speed=60";
 
   String subject;
   String message;
@@ -123,23 +131,39 @@ void loop()
   doorSensorValue = digitalRead(RMPIN);
   ultraSensorValue = digitalRead(RUPIN);
 
+  if (doorSensorValue == 1 || ultraSensorValue == 1)
+  {
+    times++;
+    if (times == 3)
+    {
+      times = 0;
+    }
+  }
+
   Serial.print("\ndoor sensor = ");
   Serial.println(doorSensorValue);
   Serial.print("ultrasonic sensor = ");
   Serial.println(ultraSensorValue);
-  
-  if ((doorSensorValue == 1 || ultraSensorValue == 1))
+
+  if (doorSensorValue == 0)
   {
+    doagain = 0;
+  }
+
+  if ((doorSensorValue == 1 || ultraSensorValue == 1) && (times == 1))
+  {
+    delay(50);
+    times++;
     if (doorSensorValue == 1)
     {
+      doagain++;
       digitalWrite(TMPIN, HIGH);
       delay(200);
       digitalWrite(TMPIN, LOW);
-
       subject = alertSbj;
       message = alertMsg;
     }
-    else if(ultraSensorValue == 1)
+    else
     {
       digitalWrite(TUPIN, HIGH);
       delay(200);
@@ -154,62 +178,38 @@ void loop()
       Serial.println("Connection failed");
       return;
     }
-    
-    if (client.connect(cameraServer, httpPort))
-    {
-      Serial.println("Connected");
+    rotatePoint(pan, tilt);
+    delay(500);
 
-      Serial.print("Requesting URL: ");
-      Serial.println(paintingPoint);
-
-      // This will rotate the camera
-      client.print(String("GET ") + paintingPoint + " HTTP/1.1\r\n" +
-                   "Host: " + cameraServer + "\r\n" +
-                   "Connection: close\r\n\r\n");
-
-      delay(500);
-    }
-    // Send images to FTP-server
-    trigger_alert();
-
-    // Disconnect from WiFi to connect to another one
+    // Disconnect from WiFi to connect to another one (email)
     WiFi.disconnect();
 
     // Send email
-    sendEmail(subject, message);
+    if (doagain == 1 || doagain == 0)
+    {
+      sendEmail(subject, message);
+    }
 
-    // Disconnect from WiFi to connect to another one
+    // Disconnect from WiFi to connect to another one (camera)
     WiFi.disconnect();
     WiFi.begin(ssid, pass); // Connect to WiFi
     WiFi.config(ip, gateway, subnet);
 
-    // while wifi not connected yet, print '.'
-    // then after it connected, get out of the loop
+     /* while wifi not connected yet, print '.'
+    then after it connected, get out of the loop */
     while (WiFi.status() != WL_CONNECTED)
     {
       delay(500);
       Serial.print(".");
     }
-  }
-  else
-  {
-    if (client.connect(cameraServer, httpPort))
-    {
-      Serial.println("Connected");
 
-      Serial.print("Requesting URL: ");
-      Serial.println(rotate);
-
-      // This will send the request to the camera
-      client.print(String("GET ") + rotate + " HTTP/1.1\r\n" +
-                   "Host: " + cameraServer + "\r\n" +
-                   "Connection: close\r\n\r\n");
-    }
+    continuousRotate();
   }
+
   doorSensorValue = 0;
   ultraSensorValue = 0;
-  
-  delay(2500);
+
+  delay(1000);
   ESP.wdtFeed();
 }
 
@@ -256,17 +256,17 @@ void sendEmail(String subject, String message)
   client.println(base64Pass); // password (Base64 encoded)
   smtpResponse(client);
 
-  client.println("MAIL FROM:<bobguard45@gmail.com>");
+  client.println("MAIL FROM:<" + String(emailSender) + ">");
   smtpResponse(client);
 
-  client.println("RCPT TO:<jonazeiselt@gmail.com>");
+  client.println("RCPT TO:<" + String(emailRecipient) + ">");
   smtpResponse(client);
 
   client.println("DATA");
   smtpResponse(client);
 
-  client.println("from:" + String(emailSender));
-  client.println("to:" + String(emailRecipient));
+  client.println("From:" + String(emailSender));
+  client.println("To:" + String(emailRecipient));
   client.println("SUBJECT: " + subject);
   client.println(message);
   client.println(".");
@@ -292,34 +292,38 @@ void smtpResponse(WiFiClientSecure &client)
   Serial.println(res);
 }
 
-/* Function that triggers the event to send pictures to FTP-server */
-void trigger_alert()
+void rotatePoint(String pan, String tilt)
 {
   WiFiClient client;
-  const int httpPort = 80;
-
-  String trigger_on = "http://192.168.1.50/axis-cgi/io/virtualinput.cgi?action=4:/";
-  String trigger_off = "http://192.168.1.50/axis-cgi/io/virtualinput.cgi?action=4:\\";
+  String paintingPoint = String(cameraServer) + "/axis-cgi/com/ptz.cgi?pan=" + pan + "&tilt=" + tilt + "&speed=110";
 
   if (!client.connect(cameraServer, httpPort))
   {
-    Serial.println("connection failed");
-    return;
+    Serial.println("Connection failed..");
   }
 
-  client.print(String("GET ") + trigger_on + " HTTP/1.1\r\n"
-               + "Host:" + cameraServer + "\r\n"
-               + "Connection: close \r\n\r\n");
+  Serial.print("Requesting URL: ");
+  Serial.println(paintingPoint);
 
-  delay(100);
+  client.println(String("GET ") + paintingPoint + " HTTP/1.1");
+  client.println("Host: " + String(cameraServer));
+  client.println("Connection: close");
+  client.println();
+}
+
+void continuousRotate()
+{
+  WiFiClient client;
+  String casRotate = String(cameraServer) + "/axis-cgi/com/ptz.cgi?continuouspantiltmove=" + pan + "," + tilt;
 
   if (!client.connect(cameraServer, httpPort))
   {
-    Serial.println("connection failed");
-    return;
+    Serial.println("Connection failed..");
   }
 
-  client.print(String("GET ") + trigger_off + " HTTP/1.1\r\n"
-               + "Host:" + cameraServer + "\r\n"
-               + "Connection: close \r\n\r\n");
+  // This will rotate the camera
+  client.print(String("GET ") + casRotate + " HTTP/1.1");
+  client.println("Host: " + String(cameraServer));
+  client.println("Connection: close");
+  client.println();
 }
